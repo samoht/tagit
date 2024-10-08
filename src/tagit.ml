@@ -65,11 +65,19 @@ let of_markdown s =
   | Some _ -> No_headers
 
 let to_markdown t =
-  match t.description with
-  | None -> String.concat ~sep:"" [ sep; t.headers; sep; t.body ]
-  | Some d ->
-      let descr = Yaml.to_string_exn (`O [ ("description", `String d) ]) in
-      String.concat ~sep:"" [ sep; t.headers; descr; sep; t.body ]
+  let descr =
+    match t.description with
+    | None -> ""
+    | Some d -> Yaml.to_string_exn (`O [ ("description", `String d) ])
+  in
+  let tags =
+    match t.tags with
+    | None -> ""
+    | Some ts ->
+        let ts = String.concat ~sep:", " ts in
+        Yaml.to_string_exn (`O [ ("tags", `String ts) ])
+  in
+  String.concat ~sep:"" [ sep; t.headers; tags; descr; sep; t.body ]
 
 module Query = struct
   let summary_prompt =
@@ -78,8 +86,8 @@ module Query = struct
      on what Tarides contributed or achieved in the context of the specific \
      event, product, or technology being discussed. Avoid any promotional \
      language or vague statements. Clearly state the key facts or actions from \
-     the post. Do not use Tarides in the description as it's already clear \
-     it's posted on Tarides blog."
+     the post. Do not use 'Tarides ...' in the description as it's already \
+     clear it's posted on Tarides blog."
 
   let blog_tags =
     [
@@ -97,11 +105,11 @@ module Query = struct
 
   let tags_prompt =
     Fmt.str
-      "Analyze the given blog post text and pick the best one or two tags from \
-       this list: %s. Each tag should be separated by a comma. Each tag should \
-       accurately reflect key technical themes, topics, or focus areas \
-       discussed in the  Ensure the tags are relevant to the post's core \
-       message and align with popular search trends in the tech industry."
+      "Analyze the given blog post text and pick the best tags from this list: \
+       %s. Each tag should be separated by a comma. Each tag should accurately \
+       reflect key technical themes, topics, or focus areas discussed in the  \
+       Ensure the tags are relevant to the post's core message and align with \
+       popular search trends in the tech industry."
       (String.concat ~sep:", " blog_tags)
 
   let description str =
