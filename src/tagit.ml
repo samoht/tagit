@@ -105,11 +105,11 @@ module Query = struct
 
   let tags_prompt =
     Fmt.str
-      "Analyze the given blog post text and pick the best tags from this list: \
-       %s. Each tag should be separated by a comma. Each tag should accurately \
-       reflect key technical themes, topics, or focus areas discussed in the  \
-       Ensure the tags are relevant to the post's core message and align with \
-       popular search trends in the tech industry."
+      "Analyze the given blog post text and pick the best at most 3 tags from \
+       this list: %s. Each tag should be separated by a comma. Each tag should \
+       accurately reflect key technical themes, topics, or focus areas \
+       discussed in the  Ensure the tags are relevant to the post's core \
+       message and align with popular search trends in the tech industry."
       (String.concat ~sep:", " blog_tags)
 
   let description str =
@@ -120,6 +120,7 @@ module Query = struct
     | Some s ->
         let tags = tags_of_string s in
         let tags = List.filter (fun t -> List.mem t blog_tags) tags in
+        let tags = List.sort_uniq String.compare tags in
         Some tags
     | None -> None
 end
