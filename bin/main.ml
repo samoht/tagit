@@ -40,13 +40,15 @@ let tagit () in_place tags descr file =
         Fmt.pr "%a %s\n%!" green "[UPDATED]" file)
       else
         let () =
+          let mode = if descr then "query" else "current" in
           match Tagit.description t with
-          | Some descr -> Fmt.pr "Description: %s\n" descr
+          | Some descr -> Fmt.pr "Description(%s): %s\n" mode descr
           | None -> ()
         in
         let () =
+          let mode = if tags then "query" else "current" in
           match Tagit.tags t with
-          | Some tags -> Fmt.pr "Tags: %s\n" (String.concat ", " tags)
+          | Some tags -> Fmt.pr "Tags(%s): %s\n" mode (String.concat ", " tags)
           | None -> ()
         in
         ()
@@ -59,11 +61,11 @@ let in_place =
 
 let tags =
   let doc = "Generate SEO-friendly tags for the blog post." in
-  Arg.(value & flag & info [ "t"; "query-tags" ] ~doc)
+  Arg.(value & flag & info [ "t"; "tags" ] ~doc)
 
 let description =
   let doc = "Generate SEO-friendly description for the blog post." in
-  Arg.(value & flag & info [ "d"; "query=description" ] ~doc)
+  Arg.(value & flag & info [ "d"; "description" ] ~doc)
 
 let input_file =
   let doc = "Input file containing the blog post content." in
