@@ -1,0 +1,13 @@
+(executable
+ (name main)
+ (libraries
+  tagit
+  fmt
+  yaml
+  astring
+  fmt.tty
+  uunf
+  cmdliner
+  fmt.cli
+  logs.fmt
+  logs.cli))

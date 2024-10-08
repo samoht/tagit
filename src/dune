@@ -1,0 +1,16 @@
+(library
+ (public_name tagit)
+ (libraries
+  eio_main
+  yaml
+  eio
+  cohttp-eio
+  yojson
+  tls
+  tls-eio
+  ca-certs
+  mirage-crypto-rng-eio
+  uunf.string
+  uutf)
+ (preprocess
+  (pps ppx_deriving_yojson)))
