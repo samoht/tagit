@@ -89,21 +89,7 @@ module Query = struct
      the post. Do not use 'Tarides ...' in the description as it's already \
      clear it's posted on Tarides blog."
 
-  let blog_tags =
-    [
-      "Cybersecurity";
-      "OCaml";
-      "Memory Safety";
-      "Functional Programming";
-      "Multicore Programming";
-      "Software Development";
-      "Open Source";
-      "Concurrent Programming";
-      "Tech Events";
-      "Performance Optimization";
-    ]
-
-  let tags_prompt =
+  let tags_prompt blog_tags =
     Fmt.str
       "Analyze the given blog post text and pick the best at most 3 tags from \
        this list: %s. Each tag should be separated by a comma. Each tag should \
@@ -112,14 +98,23 @@ module Query = struct
        message and align with popular search trends in the tech industry."
       (String.concat ~sep:", " blog_tags)
 
-  let description str =
-    Open_ai.request ~max_tokens:160 ~system:summary_prompt str
+  let description ?(limit = 160) str =
+    let rec aux i =
+      match
+        Open_ai.request ~max_tokens:(limit - i) ~system:summary_prompt str
+      with
+      | Some d when String.length d <= limit -> Some d
+      | Some _ -> aux (i + 1)
+      | None -> None
+    in
+    aux 0
 
-  let tags str =
+  let tags ~valid_tags str =
+    let tags_prompt = tags_prompt valid_tags in
     match Open_ai.request ~max_tokens:80 ~system:tags_prompt str with
     | Some s ->
         let tags = tags_of_string s in
-        let tags = List.filter (fun t -> List.mem t blog_tags) tags in
+        let tags = List.filter (fun t -> List.mem t valid_tags) tags in
         let tags = List.sort_uniq String.compare tags in
         Some tags
     | None -> None

@@ -10,8 +10,8 @@ val of_markdown : string -> status
 val to_markdown : t -> string
 
 module Query : sig
-  val description : string -> string option
-  val tags : string -> string list option
+  val description : ?limit:int -> string -> string option
+  val tags : valid_tags:string list -> string -> string list option
 end
 
 module Token : sig
