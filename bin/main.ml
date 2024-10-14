@@ -34,7 +34,7 @@ type flags = {
   alt : bool;
 }
 
-let tagit () { in_place; fixup; force; tags; description; alt } file =
+let process_one_file { in_place; fixup; force; tags; description; alt } file =
   let ic = open_in_bin file in
   let input = really_input_string ic (in_channel_length ic) in
   close_in ic;
@@ -117,6 +117,8 @@ let tagit () { in_place; fixup; force; tags; description; alt } file =
         in
         ()
 
+let tagit () options files = List.iter (process_one_file options) files
+
 open Cmdliner
 
 let in_place =
@@ -154,9 +156,9 @@ let flags =
     $ description
     $ alt)
 
-let input_file =
+let input_files =
   let doc = "Input file containing the blog post content." in
-  Arg.(required & pos 0 (some file) None & info [] ~docv:"FILE" ~doc)
+  Arg.(non_empty & pos_all file [] & info [] ~docv:"FILE" ~doc)
 
 let token =
   let doc =
@@ -170,7 +172,7 @@ let setup_log =
   Term.(const setup_log $ Fmt_cli.style_renderer () $ token $ Logs_cli.level ())
 
 (* The Cmdliner term representing the command *)
-let term = Term.(const tagit $ setup_log $ flags $ input_file)
+let term = Term.(const tagit $ setup_log $ flags $ input_files)
 
 (* The command definition *)
 let cmd =
