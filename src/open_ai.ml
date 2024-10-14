@@ -284,6 +284,7 @@ let request ?max_tokens ?system txt =
 (* FIXME: *)
 let prefix = "https://tarides.com/blog/images/"
 
-let request_parts ?max_tokens ?system txt images =
-  let images = List.map (fun img -> Request.Image_url (prefix ^ img)) images in
+let request_with_images ?max_tokens ?system ~image_urls txt =
+  let image_url img = Request.Image_url (prefix ^ img) in
+  let images = List.map image_url image_urls in
   request_content ?max_tokens ?system (Parts (Text txt :: images))

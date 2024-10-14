@@ -142,7 +142,7 @@ module Query = struct
        cannot see the image to understand its components. Use at most 50 \
        characters."
     in
-    Open_ai.request_parts descr [ img ]
+    Open_ai.request_with_images descr ~image_urls:[ img ]
 end
 
 module Token = struct
