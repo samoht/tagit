@@ -1,11 +1,49 @@
-[@@@warning "-37"]
-
 open Cohttp
 
 module Request = struct
+  type type_text = { type_ : string; [@key "type"] text : string }
+  [@@deriving yojson]
+
+  type url = { url : string } [@@deriving yojson]
+
+  type type_image_url = { type_ : string; [@key "type"] image_url : url }
+  [@@deriving yojson]
+
+  type part = Text of string | Image_url of string
+
+  let part_to_yojson = function
+    | Text t -> type_text_to_yojson { type_ = "text"; text = t }
+    | Image_url i ->
+        type_image_url_to_yojson
+          { type_ = "image_url"; image_url = { url = i } }
+
+  let part_of_yojson json =
+    match type_text_of_yojson json with
+    | Ok t -> Ok (Text t.text)
+    | Error _ -> (
+        match type_image_url_of_yojson json with
+        | Ok t -> Ok (Image_url t.image_url.url)
+        | Error _ as e -> e)
+
+  type content = Text of string | Parts of part list
+  type text = string [@@deriving yojson]
+  type parts = part list [@@deriving yojson]
+
+  let content_to_yojson = function
+    | Text t -> text_to_yojson t
+    | Parts ps -> parts_to_yojson ps
+
+  let content_of_yojson json =
+    match text_of_yojson json with
+    | Ok t -> Ok (Text t)
+    | Error _ -> (
+        match parts_of_yojson json with
+        | Ok ps -> Ok (Parts ps)
+        | Error _ as e -> e)
+
   type message = {
     role : string;
-    content : string;
+    content : content;
     name : string option; [@default None]
   }
   [@@deriving yojson]
@@ -13,7 +51,7 @@ module Request = struct
   let system_message content = { content; role = "system"; name = None }
   let user_message content = { content; role = "user"; name = None }
 
-  type format = Text | Json_format | Json_schema
+  type format = Text | Json_format | Json_schema [@@warning "-37"]
 
   let format_to_yojson : format -> Yojson.Safe.t = function
     | Text -> `Assoc [ ("type", `String "text") ]
@@ -151,6 +189,7 @@ let rec make_request ~client ~clock ~sw req =
     Header.add h "Authorization" ("Bearer " ^ Lazy.force Token.Open_ai.t)
   in
   let body = req |> Request.to_yojson |> Yojson.Safe.to_string in
+  (*  Fmt.epr "BODY=%s\n%!" body; *)
   let response, body =
     Cohttp_eio.Client.post client ~headers ~sw uri
       ~body:(Cohttp_eio.Body.of_string body)
@@ -227,11 +266,24 @@ let normalise s =
   let s = Uunf_string.normalize_utf_8 `NFD s in
   replace_unicode_chars s
 
-let request ?max_tokens ~system text =
-  let request = Request.v ?max_tokens ~system text in
+let request_content ?max_tokens ?system c =
+  let system : Request.content option =
+    match system with None -> None | Some t -> Some (Text t)
+  in
+  let request = Request.v ?max_tokens ?system c in
   match run request with
   | Error e -> failwith e
   | Ok r -> (
       match (List.hd r.choices).message.content with
       | None -> None
       | Some s -> Some (normalise s))
+
+let request ?max_tokens ?system txt =
+  request_content ?max_tokens ?system (Text txt)
+
+(* FIXME: *)
+let prefix = "https://tarides.com/blog/images/"
+
+let request_parts ?max_tokens ?system txt images =
+  let images = List.map (fun img -> Request.Image_url (prefix ^ img)) images in
+  request_content ?max_tokens ?system (Parts (Text txt :: images))

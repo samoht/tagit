@@ -4,14 +4,19 @@ type t = {
   headers : string;
   description : string option;
   tags : string list option;
+  image : string option;
+  alt : string option;
   body : string;
 }
 
 let body t = t.body
 let description t = t.description
 let tags t = t.tags
+let image t = t.image
+let alt t = t.alt
 let with_description t d = { t with description = Some d }
 let with_tags t ts = { t with tags = Some ts }
+let with_alt t alt = { t with alt = Some alt }
 
 type status = Skip | No_headers | Invalid_headers | File of t
 
@@ -58,26 +63,36 @@ let of_markdown s =
           | Ok (`O meta) ->
               let description = yaml_value meta "description" Fun.id in
               let tags = yaml_value meta "tags" tags_of_string in
-              let headers = surgery "description" (surgery "tags" headers) in
-              File { headers; tags; description; body }
+              let image = yaml_value meta "image" Fun.id in
+              let alt = yaml_value meta "image-alt" Fun.id in
+              let headers =
+                headers
+                |> surgery "description"
+                |> surgery "tags"
+                |> surgery "image"
+                |> surgery "image-alt"
+              in
+              File { headers; tags; description; body; image; alt }
           | Ok _ -> Invalid_headers
           | Error (`Msg _) -> Invalid_headers))
   | Some _ -> No_headers
 
 let to_markdown t =
+  let yaml key value = Yaml.to_string_exn (`O [ (key, `String value) ]) in
   let descr =
-    match t.description with
-    | None -> ""
-    | Some d -> Yaml.to_string_exn (`O [ ("description", `String d) ])
+    match t.description with None -> "" | Some d -> yaml "description" d
   in
   let tags =
     match t.tags with
     | None -> ""
-    | Some ts ->
-        let ts = String.concat ~sep:", " ts in
-        Yaml.to_string_exn (`O [ ("tags", `String ts) ])
+    | Some ts -> yaml "tags" (String.concat ~sep:", " ts)
   in
-  String.concat ~sep:"" [ sep; t.headers; tags; descr; sep; t.body ]
+  let image = match t.image with None -> "" | Some i -> yaml "image" i in
+  let image_alt =
+    match t.alt with None -> "" | Some a -> yaml "image-alt" a
+  in
+  String.concat ~sep:""
+    [ sep; t.headers; image; image_alt; tags; descr; sep; t.body ]
 
 module Query = struct
   let summary_prompt =
@@ -118,6 +133,16 @@ module Query = struct
         let tags = List.sort_uniq String.compare tags in
         Some tags
     | None -> None
+
+  let alt img =
+    let descr =
+      "Describe the visual content of the image, detailing any objects, \
+       people, or text visible. Avoid interpretations and focus only on the \
+       observable elements. Be concise but specific enough for someone who \
+       cannot see the image to understand its components. Use at most 50 \
+       characters."
+    in
+    Open_ai.request_parts descr [ img ]
 end
 
 module Token = struct
