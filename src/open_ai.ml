@@ -188,23 +188,24 @@ let rec make_request ~client ~clock ~sw req =
     Header.add h "Content-Type" "application/json" |> fun h ->
     Header.add h "Authorization" ("Bearer " ^ Lazy.force Token.Open_ai.t)
   in
-  let body = req |> Request.to_yojson |> Yojson.Safe.to_string in
-  (*  Fmt.epr "BODY=%s\n%!" body; *)
-  let response, body =
+  let req_str = req |> Request.to_yojson |> Yojson.Safe.to_string in
+  let response, resp =
     Cohttp_eio.Client.post client ~headers ~sw uri
-      ~body:(Cohttp_eio.Body.of_string body)
+      ~body:(Cohttp_eio.Body.of_string req_str)
   in
-  let body = Eio.Flow.read_all body in
+  let resp_str = Eio.Flow.read_all resp in
   match response.status with
   | `OK ->
       Backoff.reset ();
-      let response = Yojson.Safe.from_string body in
+      let response = Yojson.Safe.from_string resp_str in
       Response.of_yojson response
   | `Too_many_requests ->
       Backoff.block clock;
       make_request ~client ~clock ~sw req
   | s ->
       let err = Cohttp.Code.code_of_status s in
+      Fmt.epr "REQUEST : %s\n%!" req_str;
+      Fmt.epr "RESPONSE: %s\n%!" resp_str;
       Error (Fmt.str "Error: %d" err)
 
 let authenticator =
